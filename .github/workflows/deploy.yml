@@ -1,0 +1,25 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify Docker image exists
+        run: |
+          if ! docker pull cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest; then
+            echo "Docker image not found!"
+            exit 1
+          fi
+
+      - name: Deploy to VM
+        run: |
+          ssh -i ~/.ssh/id_rsa user@89.169.135.105 "docker pull cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest && docker run -d -p 3000:3000 cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest"
+
