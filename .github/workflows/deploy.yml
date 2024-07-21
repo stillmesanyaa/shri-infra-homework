@@ -22,6 +22,15 @@ jobs:
             echo "Docker image not found!"
             exit 1
           fi
+          
+      - name: Create SSH key file
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Add known hosts
+        run: |
+          ssh-keyscan -H 89.169.135.105 >> ~/.ssh/known_hosts
 
       - name: Deploy to VM
         run: |
