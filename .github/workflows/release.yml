@@ -51,7 +51,7 @@ jobs:
 
       - name: Update CHANGELOG.md
         run: |
-          echo "## ${{ github.run_number }} ($(date))" > CHANGELOG.md
+          echo "## ${{ github.run_number }} ($(date)) \n Коммиты: ${{ env.COMMITS }}" > CHANGELOG.md
           git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s" >> CHANGELOG.md
           git add CHANGELOG.md
           git commit -m "Update CHANGELOG for release ${{ github.run_number }}"
