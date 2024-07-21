@@ -1,0 +1,77 @@
+name: Create Fix Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build Docker image
+        run: |
+          docker build -t cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_fix${{ github.run_number }} .
+          docker tag cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_fix${{ github.run_number }} cr.yandex/<registry_id>/app:${{ github.event.inputs.version }}_latest
+
+      - name: Login to Yandex Container Registry
+        run: echo ${{ secrets.YCR_TOKEN }} | docker login --username oauth --password-stdin cr.yandex
+
+      - name: Push Docker image
+        run: |
+          docker push cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_fix${{ github.run_number }}
+          docker push cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest
+
+      - name: Create fix tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag -a ${{
+          github.event.inputs.version }}_fix${{ github.run_number }} -m "Fix release ${{ github.event.inputs.version }}_fix${{ github.run_number }}"
+          git push origin ${{
+          github.event.inputs.version }}_fix${{ github.run_number }}
+
+      - name: Add comment to GitHub Issue
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { context } = require('@actions/github');
+            const runNumber = context.runNumber;
+            const actor = context.actor;
+            const date = new Date().toISOString().split('T')[0];
+            const version = context.payload.inputs.version;
+            const issueTitle = `Release ${version}`;
+            const issueBody = `
+            ## Fix Release ${version}_fix${runNumber}
+            - **Date**: ${date}
+            - **Author**: ${actor}
+            - **Commits**: 
+              ${context.payload.commits.map(c => `- ${c.message}`).join('\n')}
+            - **Docker Image**: \`cr.yandex/crprvm771nrd4eaafbdd/app:${version}_fix${runNumber}\`
+            `;
+            await context.octokit.issues.createComment({
+              ...context.repo,
+              issue_number: issueNumber,
+              body: issueBody
+            });
