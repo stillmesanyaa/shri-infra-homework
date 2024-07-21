@@ -59,13 +59,15 @@ jobs:
           github.run_number }}
 
       - name: Create GitHub Issue
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { contextt } = require('@actions/github');
-            const runNumber = contextt.runNumber;
-            const actor = contextt.actor;
+            const { Octokit } = require("@octokit/rest");
+            const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+            const runNumber = process.env.GITHUB_RUN_NUMBER;
+            const actor = process.env.GITHUB_ACTOR;
             const date = new Date().toISOString().split('T')[0];
             const issueTitle = `Release ${runNumber}`;
             const issueBody = `
@@ -73,11 +75,19 @@ jobs:
             - **Date**: ${date}
             - **Author**: ${actor}
             - **Commits**: 
-              ${contextt.payload.commits.map(c => `- ${c.message}`).join('\n')}
+              ${process.env.GITHUB_COMMITS.map(c => `- ${c.message}`).join('\n')}
             - **Docker Image**: \`cr.yandex/crprvm771nrd4eaafbdd/app:${runNumber}\`
             `;
-            await contextt.octokit.issues.create({
-              ...contextt.repo,
+
+            const [latestTag] = await octokit.rest.git.listMatchingRefs({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'tags'
+            }).then(({ data }) => data.map(tag => tag.ref).reverse());
+
+            await octokit.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
               title: issueTitle,
               body: issueBody
             });
