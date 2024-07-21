@@ -61,13 +61,13 @@ jobs:
       - name: create gitHub issue
         uses: dacbd/create-issue-action@main
         with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        title: Release ${{ github.run_number }}
-        body: |
-          ## Release ${{ github.run_number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: Release ${{ github.run_number }}
+          body: |
+            ## Release ${{ github.run_number }}
 
-          - Дата: ${{ env.DATE }}
-          - Автор релиза: ${{ github.actor }}
-          - Версия: ${{ github.run_number }}
-          - Коммиты: ${{ env.COMMITS }}
-          - Ссылка на образ: cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.run_number }}
+            - Дата: ${{ env.DATE }}
+            - Автор релиза: ${{ github.actor }}
+            - Версия: ${{ github.run_number }}
+            - Коммиты: ${{ env.COMMITS }}
+            - Ссылка на образ: cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.run_number }}
