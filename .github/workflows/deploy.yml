@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      - name: Login to Yandex Container Registry
+        run: echo ${{ secrets.YCR_TOKEN_NEW }} | docker login --username oauth --password-stdin cr.yandex
+        
       - name: Verify Docker image exists
         run: |
           if ! docker pull cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest; then
