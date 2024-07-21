@@ -63,9 +63,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { context } = require('@actions/github');
-            const runNumber = context.runNumber;
-            const actor = context.actor;
+            const { contextt } = require('@actions/github');
+            const runNumber = contextt.runNumber;
+            const actor = contextt.actor;
             const date = new Date().toISOString().split('T')[0];
             const issueTitle = `Release ${runNumber}`;
             const issueBody = `
@@ -73,11 +73,11 @@ jobs:
             - **Date**: ${date}
             - **Author**: ${actor}
             - **Commits**: 
-              ${context.payload.commits.map(c => `- ${c.message}`).join('\n')}
+              ${contextt.payload.commits.map(c => `- ${c.message}`).join('\n')}
             - **Docker Image**: \`cr.yandex/crprvm771nrd4eaafbdd/app:${runNumber}\`
             `;
-            await context.octokit.issues.create({
-              ...context.repo,
+            await contextt.octokit.issues.create({
+              ...contextt.repo,
               title: issueTitle,
               body: issueBody
             });
