@@ -51,27 +51,3 @@ jobs:
           git push origin ${{
           github.event.inputs.version }}_fix${{ github.run_number }}
 
-      - name: Add comment to GitHub Issue
-        uses: actions/github-script@v3
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const { context } = require('@actions/github');
-            const runNumber = context.runNumber;
-            const actor = context.actor;
-            const date = new Date().toISOString().split('T')[0];
-            const version = context.payload.inputs.version;
-            const issueTitle = `Release ${version}`;
-            const issueBody = `
-            ## Fix Release ${version}_fix${runNumber}
-            - **Date**: ${date}
-            - **Author**: ${actor}
-            - **Commits**: 
-              ${context.payload.commits.map(c => `- ${c.message}`).join('\n')}
-            - **Docker Image**: \`cr.yandex/crprvm771nrd4eaafbdd/app:${version}_fix${runNumber}\`
-            `;
-            await context.octokit.issues.createComment({
-              ...context.repo,
-              issue_number: issueNumber,
-              body: issueBody
-            });
