@@ -35,5 +35,5 @@ jobs:
 
       - name: Deploy to VM
         run: |
-          ssh -i ~/.ssh/id_rsa yakovchukalex@89.169.135.105 "docker pull cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest && docker run -d -p 3000:3000 cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest"
+          ssh -i ~/.ssh/id_rsa service-acc@89.169.135.105 "docker pull cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest && docker run -d -p 3000:3000 cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest"
 
