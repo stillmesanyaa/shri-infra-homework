@@ -1,0 +1,83 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build Docker image
+        run: |
+          docker build -t cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.run_number }} .
+          docker tag cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.run_number }} cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.run_number }}_latest
+
+      - name: Login to Yandex Container Registry
+        run: echo ${{ secrets.YCR_TOKEN }} | docker login --username oauth --password-stdin cr.yandex
+
+      - name: Push Docker image
+        run: |
+          docker push cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.run_number }}
+          docker push cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.run_number }}_latest
+
+      - name: Create release branch and tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -b releases/${{ github.run_number }}
+          git tag -a ${{
+          github.run_number }} -m "Release ${{ github.run_number }}"
+          git push origin releases/${{ github.run_number }}
+          git push origin ${{
+          github.run_number }}
+
+      - name: Update CHANGELOG.md
+        run: |
+          echo "## ${{ github.run_number }} ($(date))" > CHANGELOG.md
+          git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s" >> CHANGELOG.md
+          git add CHANGELOG.md
+          git commit -m "Update CHANGELOG for release ${{ github.run_number }}"
+          git push origin releases/${{
+          github.run_number }}
+
+      - name: Create GitHub Issue
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { context } = require('@actions/github');
+            const runNumber = context.runNumber;
+            const actor = context.actor;
+            const date = new Date().toISOString().split('T')[0];
+            const issueTitle = `Release ${runNumber}`;
+            const issueBody = `
+            ## Release ${runNumber}
+            - **Date**: ${date}
+            - **Author**: ${actor}
+            - **Commits**: 
+              ${context.payload.commits.map(c => `- ${c.message}`).join('\n')}
+            - **Docker Image**: \`cr.yandex/crprvm771nrd4eaafbdd/app:${runNumber}\`
+            `;
+            await context.octokit.issues.create({
+              ...context.repo,
+              title: issueTitle,
+              body: issueBody
+            });
