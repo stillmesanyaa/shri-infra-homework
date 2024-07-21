@@ -51,3 +51,16 @@ jobs:
           git push origin ${{
           github.event.inputs.version }}_fix${{ github.run_number }}
 
+      - name: create gitHub issue
+        uses: dacbd/create-issue-action@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: Release ${{ github.run_number }}
+          body: |
+            ## Fix release ${{ github.run_number }}
+
+            - Дата: ${{ env.DATE }}
+            - Автор фикса: ${{ github.actor }}
+            - Версия: ${{ github.run_number }}
+            - Коммиты: ${{ env.COMMITS }}
+            - Ссылка на образ: cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.run_number }}
