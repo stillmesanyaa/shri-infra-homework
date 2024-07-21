@@ -57,6 +57,14 @@ jobs:
           git commit -m "Update CHANGELOG for release ${{ github.run_number }}"
           git push origin releases/${{
           github.run_number }}
+      - name: get current date
+        run: echo "DATE=$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
+
+      - name: get commits
+        run: |
+          # Get the list of commits
+          commits=$(git log $latest_tag..HEAD --pretty=format:'%h - %s (%an)')
+          echo "COMMITS=$commits" >> $GITHUB_ENV
 
       - name: create gitHub issue
         uses: dacbd/create-issue-action@main
