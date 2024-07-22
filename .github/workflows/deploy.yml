@@ -1,39 +1,69 @@
-name: Deploy
+name: deploy release to production
 
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Release version"
+      release_version:
+        description: 'version of the release'
         required: true
+      issue_number:
+        description: 'issue number id'
+        required: true
+        type: number
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
+      - name: get current date
+        run: echo "DATE=$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
 
-      - name: Login to Yandex Container Registry
+      - name: log in to yandex container registry
         run: echo ${{ secrets.YCR_TOKEN }} | docker login --username oauth --password-stdin cr.yandex
-        
-      - name: Verify Docker image exists
+
+      - name: check docker image existence
         run: |
-          if ! docker pull cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest; then
-            echo "Docker image not found!"
+          IMAGE_TAG="${{ github.event.inputs.release_version }}_latest"
+          IMAGE_NAME="cr.yandex/${{ secrets.YANDEX_REGISTRY_ID }}/app:$IMAGE_TAG"
+          if ! docker pull "$IMAGE_NAME"; then
+            echo "Docker image $IMAGE_NAME does not exist."
             exit 1
           fi
-          
-      - name: Create SSH key file
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
 
-      - name: Add known hosts
-        run: |
-          ssh-keyscan -H 89.169.135.105 >> ~/.ssh/known_hosts
+      - name: deploy docker image on VM
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: 89.169.128.193
+          username: yakovchukalex
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Check if docker group exists
+            if ! getent group docker; then
+              sudo groupadd docker
+            fi
+            sudo usermod -aG docker ${USER}
 
-      - name: Deploy to VM
-        run: |
-          ssh -i ~/.ssh/id_rsa service-acc@89.169.135.105 "docker pull cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest && docker run -d -p 3000:3000 cr.yandex/crprvm771nrd4eaafbdd/app:${{ github.event.inputs.version }}_latest"
+            echo ${{ secrets.YCR_TOKEN }} | docker login --username oauth --password-stdin cr.yandex
 
+            docker pull cr.yandex/${{ secrets.YANDEX_REGISTRY_ID }}/app:${{ github.event.inputs.release_version }}_latest
+
+            if [ "$(docker ps -q)" ]; then
+              docker kill $(docker ps -q)
+            fi
+            if [ "$(docker ps -a -q)" ]; then
+              docker rm $(docker ps -a -q)
+            fi
+
+            docker run -d --restart unless-stopped -p 3000:3000 cr.yandex/${{ secrets.YANDEX_REGISTRY_ID }}/app:${{ github.event.inputs.release_version }}_latest
+            
+      - name: add comment to issue
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.inputs.issue_number }}
+          body: |
+            ## Production Release
+            - **Версия релиза:** ${{ github.event.inputs.release_version }}
+            - **Дата:** ${{ env.DATE }}
+            - **Автор:** ${{ github.actor }}
+            - **Ссылка на образ:** cr.yandex/${{ secrets.YANDEX_REGISTRY_ID }}/app:${{ github.event.inputs.release_version }}_latest
